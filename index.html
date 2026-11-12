@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co https://cdn.jsdelivr.net; font-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#100d20">
+  <meta name="description" content="Família Fighter: luta arcade da família na padaria da Juju.">
+  <title>Família Fighter — Batalha na Padaria</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game" aria-label="Família Fighter, jogo de luta"></canvas>
+
+  <!-- MENU INICIAL -->
+  <section id="splash" class="screen" aria-label="Tela inicial">
+    <div class="menu-art">
+      <picture>
+        <source srcset="assets/menu/menu.webp" type="image/webp">
+        <img src="assets/menu/menu.png" alt="Família Fighter: menu principal com Juraci e Carlos" width="1365" height="768" decoding="async" fetchpriority="high">
+      </picture>
+      <button id="splashStart" class="menu-hotspot" type="button" aria-label="Jogar">JOGAR</button>
+      <button id="menuSettings" class="menu-hotspot" type="button" aria-label="Configurações">CONFIGURAÇÕES</button>
+      <button id="menuCredits" class="menu-hotspot" type="button" aria-label="Créditos">CRÉDITOS</button>
+      <button id="menuExit" class="menu-hotspot" type="button" aria-label="Sair">SAIR</button>
+    </div>
+    <div class="corner-left">
+      <button id="accountButton" class="chip" type="button">👤 MINHA CONTA</button>
+    </div>
+    <div class="corner-right">
+      <button id="fullscreenButton" class="chip" type="button" aria-label="Tela cheia">⛶</button>
+      <button id="installApp" class="chip" type="button" hidden>⬇ INSTALAR</button>
+    </div>
+    <p id="loadingNote" class="loading-note" role="status">Carregando lutadores…</p>
+  </section>
+
+  <!-- 1) ESCOLHA DO LUTADOR -->
+  <section id="charSelect" class="screen flow-screen" aria-labelledby="charTitle" hidden>
+    <header class="flow-head">
+      <button class="chip flow-back" type="button">◀ VOLTAR</button>
+      <div class="flow-title">
+        <small id="charStep">PASSO 1 DE 3</small>
+        <h1 id="charTitle">ESCOLHA SEU LUTADOR</h1>
+      </div>
+      <div class="segmented" role="radiogroup" aria-label="Modo de jogo">
+        <button type="button" role="radio" data-mode="cpu" aria-checked="true">1P × CPU</button>
+        <button type="button" role="radio" data-mode="versus" aria-checked="false">1P × 2P</button>
+      </div>
+    </header>
+    <div class="char-layout">
+      <article class="fighter-card" id="p1Card" data-slot="p1">
+        <span class="slot-tag">1P</span>
+        <canvas class="big-preview" width="360" height="400" aria-hidden="true"></canvas>
+        <div class="card-info">
+          <strong class="card-name"></strong>
+          <em class="card-quote"></em>
+          <ul class="card-moves"></ul>
+        </div>
+      </article>
+      <div id="roster" class="roster" role="listbox" aria-label="Lutadores"></div>
+      <article class="fighter-card" id="p2Card" data-slot="p2">
+        <span class="slot-tag" id="p2Tag">CPU</span>
+        <canvas class="big-preview" width="360" height="400" aria-hidden="true"></canvas>
+        <div class="card-info">
+          <strong class="card-name"></strong>
+          <em class="card-quote"></em>
+          <ul class="card-moves"></ul>
+        </div>
+      </article>
+    </div>
+    <footer class="flow-foot">
+      <p id="charHelp" class="help"></p>
+      <button id="charConfirm" class="primary" type="button">CONFIRMAR ▶</button>
+    </footer>
+  </section>
+
+  <!-- 2) ESCOLHA DO CENÁRIO -->
+  <section id="stageSelect" class="screen flow-screen" aria-labelledby="stageTitle" hidden>
+    <header class="flow-head">
+      <button class="chip flow-back" type="button">◀ VOLTAR</button>
+      <div class="flow-title">
+        <small>PASSO 2 DE 3</small>
+        <h1 id="stageTitle">ESCOLHA O CENÁRIO</h1>
+      </div>
+      <span class="flow-spacer"></span>
+    </header>
+    <div class="stage-layout">
+      <figure class="stage-preview">
+        <canvas id="stageBig" width="576" height="346" aria-hidden="true"></canvas>
+        <figcaption>
+          <strong id="stageName"></strong>
+          <span id="stageDesc"></span>
+        </figcaption>
+      </figure>
+      <div id="stageList" class="stage-list" role="listbox" aria-label="Cenários"></div>
+    </div>
+    <footer class="flow-foot">
+      <p class="help">Setas ou toque para escolher · Enter para confirmar</p>
+      <button id="stageConfirm" class="primary" type="button">CONFIRMAR ▶</button>
+    </footer>
+  </section>
+
+  <!-- 3) DIFICULDADE E REGRAS -->
+  <section id="optionsSelect" class="screen flow-screen" aria-labelledby="optionsTitle" hidden>
+    <header class="flow-head">
+      <button class="chip flow-back" type="button">◀ VOLTAR</button>
+      <div class="flow-title">
+        <small>PASSO 3 DE 3</small>
+        <h1 id="optionsTitle">DIFICULDADE</h1>
+      </div>
+      <span class="flow-spacer"></span>
+    </header>
+    <div class="options-layout">
+      <div id="diffCards" class="diff-cards" role="radiogroup" aria-label="Dificuldade">
+        <button type="button" role="radio" class="diff-card" data-difficulty="easy" aria-checked="false">
+          <span class="diff-icon">😊</span><strong>FÁCIL</strong><small>A CPU pega leve, defende pouco e demora a reagir.</small>
+        </button>
+        <button type="button" role="radio" class="diff-card" data-difficulty="normal" aria-checked="true">
+          <span class="diff-icon">💪</span><strong>NORMAL</strong><small>Luta equilibrada: defende, faz combos e usa especiais.</small>
+        </button>
+        <button type="button" role="radio" class="diff-card" data-difficulty="hard" aria-checked="false">
+          <span class="diff-icon">🔥</span><strong>DIFÍCIL</strong><small>Reflexo rápido, defesa forte e antiaéreo. Prepare-se!</small>
+        </button>
+      </div>
+      <p id="versusNote" class="versus-note" hidden>Modo 2 jogadores: os dois são controlados por pessoas, sem dificuldade de CPU.</p>
+      <div class="rule-rows">
+        <div class="option-row">
+          <span class="option-label" id="roundsLabel">ROUNDS</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="roundsLabel">
+            <button type="button" role="radio" data-rounds="1" aria-checked="false">1 ROUND</button>
+            <button type="button" role="radio" data-rounds="2" aria-checked="true">MELHOR DE 3</button>
+            <button type="button" role="radio" data-rounds="3" aria-checked="false">MELHOR DE 5</button>
+          </div>
+        </div>
+        <div class="option-row">
+          <span class="option-label" id="timeLabel">TEMPO</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="timeLabel">
+            <button type="button" role="radio" data-time="45" aria-checked="false">45 s</button>
+            <button type="button" role="radio" data-time="60" aria-checked="true">60 s</button>
+            <button type="button" role="radio" data-time="99" aria-checked="false">99 s</button>
+            <button type="button" role="radio" data-time="0" aria-checked="false">∞</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer class="flow-foot">
+      <p id="matchSummary" class="help"></p>
+      <button id="fightStart" class="primary fight-button" type="button">LUTAR! ▶</button>
+    </footer>
+  </section>
+
+  <!-- TELA VS -->
+  <section id="vsScreen" class="screen vs-screen" aria-live="polite" hidden>
+    <div class="vs-side vs-left">
+      <canvas width="360" height="400" aria-hidden="true"></canvas>
+      <strong class="vs-name"></strong>
+    </div>
+    <div class="vs-center">
+      <span class="vs-text">VS</span>
+      <small id="vsStage"></small>
+    </div>
+    <div class="vs-side vs-right">
+      <canvas width="360" height="400" aria-hidden="true"></canvas>
+      <strong class="vs-name"></strong>
+    </div>
+  </section>
+
+  <!-- LISTA DE GOLPES (pausa) -->
+  <section id="moveList" class="screen menu-dialog" role="dialog" aria-modal="true" aria-labelledby="moveListTitle" hidden>
+    <div class="dialog-panel">
+      <h2 id="moveListTitle">GOLPES</h2>
+      <ul id="moveListItems" class="move-list"></ul>
+      <button id="closeMoveList" class="primary" type="button">VOLTAR</button>
+    </div>
+  </section>
+  <!-- DIÁLOGO GENÉRICO (configurações / créditos / sair) -->
+  <section id="menuDialog" class="screen menu-dialog" role="dialog" aria-modal="true" aria-labelledby="menuDialogTitle" hidden>
+    <div class="dialog-panel">
+      <h2 id="menuDialogTitle"></h2>
+      <p id="menuDialogText"></p>
+      <div id="settingsPanel" class="settings" hidden>
+        <label class="toggle"><input id="setSound" type="checkbox"> Efeitos sonoros</label>
+        <label class="toggle"><input id="setMusic" type="checkbox"> Música</label>
+        <label class="select-label">Música na luta
+          <select id="setFightMusic">
+            <option value="stage">Uma música para cada cenário</option>
+            <option value="theme">Sempre "Bolo da Juraci"</option>
+            <option value="chip">Trilha 8-bit</option>
+          </select>
+        </label>
+        <label class="toggle"><input id="setVoice" type="checkbox"> Falas em voz alta (voz do navegador)</label>
+        <label class="toggle"><input id="setTalk" type="checkbox"> Conversa antes da luta</label>
+        <label class="range">Volume <input id="setVolume" type="range" min="0" max="1" step="0.05"></label>
+        <label class="toggle"><input id="setVibration" type="checkbox"> Vibrar ao tomar golpe (celular)</label>
+        <label class="select-label">Controles na tela
+          <select id="setTouch">
+            <option value="auto">Automático</option>
+            <option value="always">Sempre mostrar</option>
+            <option value="never">Nunca mostrar</option>
+          </select>
+        </label>
+        <div class="controls-help">
+          <h3>Teclado</h3>
+          <p><b>1 jogador:</b> mover A/D ou ←/→ · pular W/↑/Espaço · agachar S/↓ · soco J · forte K · defesa I · especial L (barra cheia) · segundo especial ↓ + L (meia barra)</p>
+          <p><b>2 jogadores:</b> 1P = WASD + F soco, G forte, H defesa, T especial · 2P = setas + J, K, I, L (ou Num 1, 2, 3, 0)</p>
+          <p><b>Combos:</b> soco → soco → forte encadeiam quando acertam. Controles (gamepad) também funcionam.</p>
+        </div>
+      </div>
+      <button id="closeMenuDialog" class="primary" type="button">VOLTAR</button>
+    </div>
+  </section>
+
+  <!-- CONTA -->
+  <section id="accountDialog" class="screen menu-dialog" role="dialog" aria-modal="true" aria-labelledby="accountTitle" hidden>
+    <div class="dialog-panel">
+      <h2 id="accountTitle">MINHA CONTA</h2>
+      <p id="accountStatus" role="status">Conectando…</p>
+      <p id="accountProgress" hidden></p>
+      <form id="nicknameForm" class="auth-form" hidden>
+        <label>Apelido
+          <input id="profileNickname" name="nickname" type="text" maxlength="32" minlength="1" required autocomplete="nickname">
+        </label>
+        <button id="saveNickname" class="secondary" type="submit">SALVAR APELIDO</button>
+      </form>
+      <form id="accountForm" class="auth-form">
+        <label>Apelido (para nova conta)
+          <input id="accountNickname" name="nickname" type="text" maxlength="32" autocomplete="nickname" placeholder="Como quer aparecer no jogo">
+        </label>
+        <label>E-mail
+          <input id="accountEmail" name="email" type="email" required autocomplete="email" placeholder="voce@exemplo.com">
+        </label>
+        <label>Senha
+          <input id="accountPassword" name="password" type="password" required minlength="8" autocomplete="current-password" placeholder="Mínimo de 8 caracteres">
+        </label>
+        <div class="auth-actions">
+          <button id="signInButton" class="primary" type="submit">ENTRAR</button>
+          <button id="signUpButton" class="secondary" type="button">CRIAR CONTA</button>
+        </div>
+      </form>
+      <div class="auth-actions">
+        <button id="signOutButton" class="secondary" type="button" hidden>SAIR DA CONTA</button>
+        <button id="closeAccountDialog" class="secondary" type="button">FECHAR</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTADO -->
+  <section id="result" class="screen" aria-live="polite" hidden>
+    <div class="dialog-panel result-panel">
+      <h1 id="resultTitle">FIM DE LUTA</h1>
+      <p id="resultText"></p>
+      <dl id="resultStats" class="stats"></dl>
+      <p id="syncStatus" role="status"></p>
+      <div class="screen-actions">
+        <button id="replay" class="primary" type="button">REVANCHE</button>
+        <button id="toSelect" class="secondary" type="button">TROCAR LUTADOR</button>
+        <button id="toStage" class="secondary" type="button">TROCAR CENÁRIO</button>
+        <button id="toMenu" class="secondary" type="button">MENU INICIAL</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAUSA -->
+  <section id="pause" class="screen" aria-label="Jogo pausado" hidden>
+    <div class="dialog-panel">
+      <h1>PAUSADO</h1>
+      <div class="stack">
+        <button id="resume" class="primary" type="button">CONTINUAR</button>
+        <button id="restartFight" class="secondary" type="button">REINICIAR LUTA</button>
+        <button id="pauseMoves" class="secondary" type="button">LISTA DE GOLPES</button>
+        <button id="pauseSettings" class="secondary" type="button">CONFIGURAÇÕES</button>
+        <button id="pauseMenu" class="secondary" type="button">MENU INICIAL</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="rotateNotice" class="screen" aria-live="polite" hidden>
+    <div class="rotate-icon" aria-hidden="true">📱↻</div>
+    <h1>GIRE O CELULAR</h1>
+    <p>Família Fighter é jogado na horizontal. A luta fica pausada até você virar a tela.</p>
+  </section>
+
+  <button id="pauseButton" type="button" aria-label="Pausar jogo" title="Pausar (P / Esc)" hidden>❚❚</button>
+
+  <!-- CONTROLES TOUCH -->
+  <div id="controls" hidden aria-label="Controles de toque">
+    <div id="stick" class="stick" aria-label="Direcional: mover, pular e agachar">
+      <div class="stick-knob"></div>
+    </div>
+    <div class="actions">
+      <button class="control" type="button" data-act="light" aria-label="Soco">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V7a2 2 0 0 1 4 0v3-4a2 2 0 0 1 4 0v4-3a2 2 0 0 1 4 0v7c0 4-3 7-7 7h-1a6 6 0 0 1-6-6v-3a2 2 0 0 1 4 0"/></svg>
+        <span>SOCO</span>
+      </button>
+      <button class="control" type="button" data-act="heavy" aria-label="Golpe forte">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l5-6 3 2 6-9m0 0l2 3m-2-3l-3 1"/><circle cx="8" cy="5" r="2"/></svg>
+        <span id="heavyLabel">FORTE</span>
+      </button>
+      <button class="control" type="button" data-act="guard" aria-label="Defesa">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z"/></svg>
+        <span>DEFESA</span>
+      </button>
+      <button class="control" type="button" data-act="special" aria-label="Golpe especial">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.6 6.3L21 9l-5 4.4L17.5 20 12 16.6 6.5 20 8 13.4 3 9l6.4-.7z"/></svg>
+        <span>ESPECIAL</span>
+      </button>
+    </div>
+  </div>
+
+  <script src="supabase-config.js"></script>
+  <script src="js/sprite-data.js"></script>
+  <script src="js/dialogue.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/account.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
